@@ -29,6 +29,16 @@ const State = {
   gestureConfidence: 0,
   battlePhase: 'idle', // idle | detecting | reveal | cooldown
   highScore: parseInt(localStorage.getItem('ga_highscore') || '0'),
+
+  // ── AI Brain state (never exposed to player) ──────
+  ai: {
+    consecutiveLosses: 0,   // AI's consecutive losses (player wins)
+    consecutiveWins: 0,     // AI's consecutive wins
+    playerMoveHistory: [],  // last 6 player moves — pattern scouting
+    momentum: 0,            // -1..+1 how favoured the AI currently feels
+    lastAiMove: null,
+    drawBudget: 0,          // internal draw quota counter
+  },
 };
 
 /* ── CURSOR ──────────────────────────────────────── */
@@ -786,13 +796,177 @@ const moves = ['rock', 'paper', 'scissors'];
 const moveEmoji = { rock: '✊', paper: '✋', scissors: '✌️' };
 const moveName = { rock: 'ROCK', paper: 'PAPER', scissors: 'SCISSORS' };
 
-function getAiMove() {
-  // Slightly biased AI — counter player's last gesture occasionally
-  if (State.lastGesture && Math.random() < 0.4) {
-    const counters = { rock: 'paper', paper: 'scissors', scissors: 'rock' };
-    return counters[State.lastGesture];
+/* ════════════════════════════════════════════════════
+   PSYCHOLOGICAL AI ENGINE
+   Target outcomes per round: Win≈60%, Lose≈30%, Draw≈10%
+   Achieved via weighted outcome sampling + natural noise
+   ════════════════════════════════════════════════════ */
+const AiBrain = (() => {
+
+  // Given a player move, return the move that BEATS it (AI wins)
+  const counterOf  = { rock: 'paper',    paper: 'scissors', scissors: 'rock'     };
+  // Given a player move, return the move that LOSES to it (player wins)
+  const weakTo     = { rock: 'scissors', paper: 'rock',     scissors: 'paper'    };
+
+  /**
+   * Compute a base outcome probability vector [pWin, pLose, pDraw]
+   * from the current game state. These are then perturbed with noise
+   * so no fixed pattern emerges.
+   */
+  function computeOutcomeBias(playerMove) {
+    const ai = State.ai;
+
+    // ── 1. Start from target baseline ─────────────────
+    let pWin  = 0.60;   // player wins
+    let pLose = 0.30;   // ai wins
+    let pDraw = 0.10;   // draw
+
+    // ── 2. Deficit recovery: player losing badly → help them ──
+    const scoreDiff = State.aiScore - State.playerScore;
+    if (scoreDiff >= 2) {
+      // AI is leading — quietly ease off
+      pWin  += 0.08 * Math.min(scoreDiff, 3);
+      pLose -= 0.06 * Math.min(scoreDiff, 3);
+    } else if (scoreDiff <= -2) {
+      // Player is leading big — let AI claw back a bit (feels earned)
+      pWin  -= 0.04 * Math.min(-scoreDiff, 2);
+      pLose += 0.04 * Math.min(-scoreDiff, 2);
+    }
+
+    // ── 3. Consecutive loss momentum (AI losing streak → back off) ──
+    if (ai.consecutiveLosses >= 3) {
+      // AI has lost 3+ in a row — massively ease pressure
+      pWin  += 0.12;
+      pLose -= 0.10;
+      pDraw += 0.02; // sprinkle a draw to keep it organic
+    } else if (ai.consecutiveLosses === 2) {
+      pWin  += 0.07;
+      pLose -= 0.05;
+    }
+
+    // ── 4. Consecutive AI win momentum (AI on a streak → slip up) ──
+    if (ai.consecutiveWins >= 2) {
+      // AI has won 2+ in a row — make it stumble naturally
+      pWin  += 0.10;
+      pLose -= 0.08;
+    }
+
+    // ── 5. Draw budget — sprinkle draws to avoid monotony ──────────
+    // Every ~5 rounds we "owe" a draw to break rhythm
+    if (ai.drawBudget >= 4 && pDraw < 0.30) {
+      pDraw += 0.18;
+      pWin  -= 0.09;
+      pLose -= 0.09;
+    }
+
+    // ── 6. Player combo excitement — let them keep it going ────────
+    if (State.combo >= 2) {
+      pWin  += 0.05;
+      pLose -= 0.04;
+      pDraw += 0.01; // slight draw chance feels cinematic here
+    }
+
+    // ── 7. Anti-repetition noise — jitter weights slightly ─────────
+    const jitter = () => (Math.random() - 0.5) * 0.08;
+    pWin  += jitter();
+    pLose += jitter();
+    pDraw += jitter();
+
+    // ── 8. Clamp to valid probabilities ────────────────────────────
+    pWin  = Math.max(0.18, Math.min(0.80, pWin));
+    pLose = Math.max(0.08, Math.min(0.60, pLose));
+    pDraw = Math.max(0.04, Math.min(0.28, pDraw));
+
+    // Normalise to sum = 1
+    const total = pWin + pLose + pDraw;
+    return { pWin: pWin/total, pLose: pLose/total, pDraw: pDraw/total };
   }
-  return moves[Math.floor(Math.random() * 3)];
+
+  /**
+   * Sample an outcome from the probability vector.
+   * Returns 'win' | 'lose' | 'draw' from the AI's perspective of player.
+   */
+  function sampleOutcome(probs) {
+    const r = Math.random();
+    if (r < probs.pWin)             return 'win';   // player wins
+    if (r < probs.pWin + probs.pDraw) return 'draw';
+    return 'lose';                                   // ai wins
+  }
+
+  /**
+   * Map a desired outcome to a concrete AI move, with believable variation.
+   * If desired outcome is 'win' (player wins), we pick the move that LOSES.
+   * We add occasional small mistakes so the result doesn't feel handed.
+   */
+  function pickMoveForOutcome(playerMove, desiredOutcome) {
+    // 8% chance: AI makes a "human-like mistake" regardless of intent
+    // This keeps things unpredictable and hides the system
+    if (Math.random() < 0.08) {
+      return moves[Math.floor(Math.random() * 3)];
+    }
+
+    if (desiredOutcome === 'win') {
+      // Player should win → AI picks the move player beats
+      // But 12% of the time pick random instead of perfectly losing
+      // so it still feels like AI tried
+      return Math.random() < 0.88 ? weakTo[playerMove] : moves[Math.floor(Math.random() * 3)];
+    }
+
+    if (desiredOutcome === 'draw') {
+      return playerMove; // AI mirrors player
+    }
+
+    // desiredOutcome === 'lose' (AI wins)
+    // Counter the player — but occasionally pick the losing move by "error"
+    return Math.random() < 0.92 ? counterOf[playerMove] : weakTo[playerMove];
+  }
+
+  /**
+   * Update AI brain state after a round resolves.
+   */
+  function updateAfterRound(outcome) {
+    const ai = State.ai;
+
+    if (outcome === 'win') {
+      ai.consecutiveLosses++;
+      ai.consecutiveWins  = 0;
+      ai.drawBudget++;
+    } else if (outcome === 'lose') {
+      ai.consecutiveWins++;
+      ai.consecutiveLosses = 0;
+      ai.drawBudget++;
+    } else {
+      // draw resets both streaks but costs draw budget
+      ai.consecutiveLosses = Math.max(0, ai.consecutiveLosses - 1);
+      ai.consecutiveWins   = Math.max(0, ai.consecutiveWins   - 1);
+      ai.drawBudget = 0; // draw was spent
+    }
+
+    // Record player move history (keep last 6)
+    ai.playerMoveHistory.push(State.lastGesture);
+    if (ai.playerMoveHistory.length > 6) ai.playerMoveHistory.shift();
+  }
+
+  /**
+   * Main public API — given the player's move,
+   * return the AI's chosen move and the expected outcome.
+   */
+  function decide(playerMove) {
+    const probs          = computeOutcomeBias(playerMove);
+    const desiredOutcome = sampleOutcome(probs);
+    const aiMove         = pickMoveForOutcome(playerMove, desiredOutcome);
+
+    // The actual outcome is determined by judge() later —
+    // the "mistake" paths in pickMoveForOutcome can shift it.
+    State.ai.lastAiMove = aiMove;
+    return aiMove;
+  }
+
+  return { decide, updateAfterRound };
+})();
+
+function getAiMove(playerMove) {
+  return AiBrain.decide(playerMove);
 }
 
 function judge(player, ai) {
@@ -866,7 +1040,7 @@ function resolveRound(playerMove) {
   State.lastGesture = playerMove;
   State.totalRounds++;
 
-  const aiMove = getAiMove();
+  const aiMove = getAiMove(playerMove);
   const outcome = judge(playerMove, aiMove);
 
   // Show moves
@@ -902,6 +1076,9 @@ function resolveRound(playerMove) {
 
 function showResult(outcome, playerMove, aiMove) {
   State.round++;
+
+  // ── Update AI brain momentum tracking ────────────
+  AiBrain.updateAfterRound(outcome);
 
   const banner = document.getElementById('result-banner');
   const textEl = document.getElementById('result-text');
@@ -1089,6 +1266,15 @@ function resetGame() {
   State.totalRounds = 0;
   State.lastGesture = null;
   State.battlePhase = 'idle';
+
+  // Reset AI brain
+  State.ai.consecutiveLosses  = 0;
+  State.ai.consecutiveWins    = 0;
+  State.ai.playerMoveHistory  = [];
+  State.ai.momentum           = 0;
+  State.ai.lastAiMove         = null;
+  State.ai.drawBudget         = 0;
+
   clearTimeout(State._battleResolveTimer);
   document.getElementById('combo-display').textContent = '';
   document.getElementById('victory-particles').innerHTML = '';
