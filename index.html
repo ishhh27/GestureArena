@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gesture Arena: Rock Paper Scissors</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:ital,wght@0,100;0,300;0,400;0,600;1,300&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  LOADING SCREEN                           -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-loading" class="screen active">
+    <canvas id="bg-canvas"></canvas>
+    <div class="loading-content">
+      <div class="logo-container">
+        <div class="logo-ring ring-1"></div>
+        <div class="logo-ring ring-2"></div>
+        <div class="logo-ring ring-3"></div>
+        <div class="logo-core">
+          <span class="logo-icon">✊</span>
+        </div>
+      </div>
+      <h1 class="logo-title">GESTURE<br/><span class="accent">ARENA</span></h1>
+      <p class="logo-subtitle">ROCK · PAPER · SCISSORS</p>
+      <div class="loading-bar-wrap">
+        <div class="loading-bar-track">
+          <div class="loading-bar-fill" id="loading-bar"></div>
+          <div class="loading-bar-glow"></div>
+        </div>
+        <p class="loading-status" id="loading-status">Initializing Gesture Systems...</p>
+      </div>
+    </div>
+    <div class="particles-container" id="particles-loading"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  MAIN MENU                                -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-menu" class="screen">
+    <canvas id="bg-canvas-menu"></canvas>
+    <div class="menu-content">
+      <div class="menu-logo-wrap">
+        <div class="menu-logo-badge">✊ · ✋ · ✌️</div>
+        <h1 class="menu-title">GESTURE<br/><span class="accent">ARENA</span></h1>
+        <p class="menu-tagline">Control the battle with your hands</p>
+      </div>
+
+      <nav class="menu-nav">
+        <button class="btn-menu" id="btn-play" data-sound="click">
+          <span class="btn-icon">▶</span>
+          <span class="btn-label">PLAY</span>
+          <div class="btn-glow"></div>
+        </button>
+        <button class="btn-menu btn-secondary" id="btn-howto" data-sound="click">
+          <span class="btn-icon">?</span>
+          <span class="btn-label">HOW TO PLAY</span>
+          <div class="btn-glow"></div>
+        </button>
+        <button class="btn-menu btn-secondary" id="btn-settings" data-sound="click">
+          <span class="btn-icon">⚙</span>
+          <span class="btn-label">SETTINGS</span>
+          <div class="btn-glow"></div>
+        </button>
+      </nav>
+
+      <div class="menu-score-ticker">
+        <span class="ticker-label">HIGH SCORE</span>
+        <span class="ticker-val" id="menu-highscore">0</span>
+      </div>
+    </div>
+    <div class="floating-orbs" id="menu-orbs"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  HOW TO PLAY                              -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-howto" class="screen">
+    <canvas id="bg-canvas-howto"></canvas>
+    <div class="howto-panel glass-panel">
+      <h2 class="panel-title">HOW TO PLAY</h2>
+      <div class="gesture-cards">
+        <div class="gesture-card" data-delay="0">
+          <div class="gesture-emoji">✊</div>
+          <div class="gesture-name">ROCK</div>
+          <div class="gesture-desc">Close your fist tightly</div>
+          <div class="gesture-beats">Beats Scissors</div>
+        </div>
+        <div class="gesture-card" data-delay="100">
+          <div class="gesture-emoji">✋</div>
+          <div class="gesture-name">PAPER</div>
+          <div class="gesture-desc">Extend all fingers open</div>
+          <div class="gesture-beats">Beats Rock</div>
+        </div>
+        <div class="gesture-card" data-delay="200">
+          <div class="gesture-emoji">✌️</div>
+          <div class="gesture-name">SCISSORS</div>
+          <div class="gesture-desc">Raise index & middle fingers</div>
+          <div class="gesture-beats">Beats Paper</div>
+        </div>
+      </div>
+      <div class="howto-rules">
+        <p>🎯 First to <strong>5 points</strong> wins the match</p>
+        <p>⚡ Build combos for bonus energy</p>
+        <p>📷 Allow webcam access for gesture detection</p>
+      </div>
+      <button class="btn-back" id="btn-back-howto">← BACK TO MENU</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  SETTINGS                                 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-settings" class="screen">
+    <canvas id="bg-canvas-settings"></canvas>
+    <div class="settings-panel glass-panel">
+      <h2 class="panel-title">SETTINGS</h2>
+      <div class="setting-row">
+        <label class="setting-label">SOUND FX</label>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="toggle-sound" class="toggle-input" checked />
+          <label for="toggle-sound" class="toggle-track"><span class="toggle-thumb"></span></label>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label class="setting-label">MUSIC</label>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="toggle-music" class="toggle-input" checked />
+          <label for="toggle-music" class="toggle-track"><span class="toggle-thumb"></span></label>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label class="setting-label">SCREEN SHAKE</label>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="toggle-shake" class="toggle-input" checked />
+          <label for="toggle-shake" class="toggle-track"><span class="toggle-thumb"></span></label>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label class="setting-label">PARTICLES</label>
+        <div class="toggle-wrap">
+          <input type="checkbox" id="toggle-particles" class="toggle-input" checked />
+          <label for="toggle-particles" class="toggle-track"><span class="toggle-thumb"></span></label>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label class="setting-label">CONFIDENCE THRESHOLD</label>
+        <div class="slider-wrap">
+          <input type="range" id="slider-confidence" class="neon-slider" min="50" max="95" value="75" />
+          <span class="slider-val" id="confidence-val">75%</span>
+        </div>
+      </div>
+      <button class="btn-back" id="btn-back-settings">← BACK TO MENU</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  CALIBRATION SCREEN                       -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-calibration" class="screen">
+    <canvas id="bg-canvas-calibration"></canvas>
+    <div class="calibration-layout">
+      <div class="calibration-left">
+        <h2 class="panel-title">GESTURE CALIBRATION</h2>
+        <p class="calibration-sub">Show your hand to the camera</p>
+
+        <div class="confidence-meter-wrap">
+          <div class="confidence-label-row">
+            <span>TRACKING CONFIDENCE</span>
+            <span id="confidence-pct">0%</span>
+          </div>
+          <div class="confidence-track">
+            <div class="confidence-fill" id="confidence-fill"></div>
+          </div>
+        </div>
+
+        <div class="current-gesture-display">
+          <div class="gesture-detected-emoji" id="gesture-detected-emoji">—</div>
+          <div class="gesture-detected-name" id="gesture-detected-name">Waiting for hand...</div>
+        </div>
+
+        <div class="mini-gesture-cards">
+          <div class="mini-card" id="mini-rock"><span>✊</span><small>ROCK</small></div>
+          <div class="mini-card" id="mini-paper"><span>✋</span><small>PAPER</small></div>
+          <div class="mini-card" id="mini-scissors"><span>✌️</span><small>SCISSORS</small></div>
+        </div>
+
+        <button class="btn-ready" id="btn-ready" disabled>READY FOR BATTLE</button>
+      </div>
+
+      <div class="calibration-right">
+        <div class="webcam-frame">
+          <div class="webcam-corner tl"></div>
+          <div class="webcam-corner tr"></div>
+          <div class="webcam-corner bl"></div>
+          <div class="webcam-corner br"></div>
+          <div class="webcam-scan-line" id="scan-line"></div>
+          <video id="webcam-video" autoplay playsinline muted></video>
+          <canvas id="landmark-canvas"></canvas>
+          <div class="webcam-status" id="webcam-status">Activating Camera...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  COUNTDOWN                                -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-countdown" class="screen">
+    <canvas id="bg-canvas-countdown"></canvas>
+    <div class="countdown-content">
+      <div class="countdown-number" id="countdown-number">3</div>
+      <div class="countdown-ring-outer"></div>
+      <div class="countdown-ring-inner"></div>
+      <div class="countdown-instruction" id="countdown-instruction">GET READY</div>
+    </div>
+    <div class="countdown-flare" id="countdown-flare"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  BATTLE SCREEN                            -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-battle" class="screen">
+    <canvas id="bg-canvas-battle"></canvas>
+
+    <!-- HUD TOP -->
+    <div class="battle-hud-top">
+      <div class="score-block player-score-block">
+        <div class="score-label">YOU</div>
+        <div class="score-value" id="player-score">0</div>
+        <div class="score-lives" id="player-lives"></div>
+      </div>
+      <div class="hud-center">
+        <div class="round-label">ROUND</div>
+        <div class="round-value" id="round-num">1</div>
+        <div class="combo-display" id="combo-display"></div>
+      </div>
+      <div class="score-block ai-score-block">
+        <div class="score-label">A.I.</div>
+        <div class="score-value" id="ai-score">0</div>
+        <div class="score-lives" id="ai-lives"></div>
+      </div>
+    </div>
+
+    <!-- BATTLE ARENA -->
+    <div class="battle-arena">
+      <!-- PLAYER SIDE -->
+      <div class="arena-side player-side">
+        <div class="fighter-label">YOU</div>
+        <div class="fighter-display" id="player-fighter">
+          <div class="fighter-glow player-glow"></div>
+          <div class="fighter-emoji" id="player-emoji">?</div>
+          <div class="fighter-ring"></div>
+        </div>
+        <div class="webcam-mini-wrap">
+          <video id="battle-video" autoplay playsinline muted></video>
+          <canvas id="battle-landmark-canvas"></canvas>
+          <div class="live-badge">● LIVE</div>
+        </div>
+      </div>
+
+      <!-- VS CENTER -->
+      <div class="arena-vs">
+        <div class="vs-text">VS</div>
+        <div class="vs-ring-1"></div>
+        <div class="vs-ring-2"></div>
+        <div class="energy-bolt" id="energy-bolt"></div>
+      </div>
+
+      <!-- AI SIDE -->
+      <div class="arena-side ai-side">
+        <div class="fighter-label">A.I.</div>
+        <div class="fighter-display" id="ai-fighter">
+          <div class="fighter-glow ai-glow"></div>
+          <div class="fighter-emoji" id="ai-emoji">?</div>
+          <div class="fighter-ring"></div>
+        </div>
+        <div class="ai-thinking" id="ai-thinking">
+          <div class="thinking-dot"></div>
+          <div class="thinking-dot"></div>
+          <div class="thinking-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULT BANNER -->
+    <div class="result-banner" id="result-banner">
+      <div class="result-text" id="result-text">DRAW</div>
+      <div class="result-sub" id="result-sub"></div>
+    </div>
+
+    <!-- HUD BOTTOM -->
+    <div class="battle-hud-bottom">
+      <div class="gesture-hint-row" id="gesture-hint-row">
+        <div class="hint-card">✊ Rock</div>
+        <div class="hint-card">✋ Paper</div>
+        <div class="hint-card">✌️ Scissors</div>
+      </div>
+      <div class="battle-status" id="battle-status">Show your gesture!</div>
+    </div>
+
+    <!-- PARTICLE CANVAS -->
+    <canvas id="particle-canvas"></canvas>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!--  GAME OVER                                -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="screen-gameover" class="screen">
+    <canvas id="bg-canvas-gameover"></canvas>
+    <div class="gameover-content">
+      <div class="gameover-badge" id="gameover-badge">
+        <div class="badge-ring"></div>
+        <div class="badge-emoji" id="gameover-emoji">🏆</div>
+      </div>
+      <h2 class="gameover-title" id="gameover-title">VICTORY</h2>
+      <p class="gameover-sub" id="gameover-sub">You conquered the Arena!</p>
+      <div class="gameover-stats">
+        <div class="stat-item">
+          <div class="stat-val" id="stat-score">0</div>
+          <div class="stat-label">SCORE</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val" id="stat-rounds">0</div>
+          <div class="stat-label">ROUNDS</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val" id="stat-combo">0</div>
+          <div class="stat-label">BEST COMBO</div>
+        </div>
+      </div>
+      <div class="gameover-btns">
+        <button class="btn-menu" id="btn-play-again">▶ PLAY AGAIN</button>
+        <button class="btn-menu btn-secondary" id="btn-goto-menu">⌂ MENU</button>
+      </div>
+    </div>
+    <div class="victory-particles" id="victory-particles"></div>
+  </div>
+
+  <!-- AUDIO CONTEXT UNLOCK -->
+  <div id="audio-unlock" class="audio-unlock-overlay">
+    <div class="audio-unlock-box">
+      <div class="audio-icon">🔊</div>
+      <p>Tap anywhere to enable sound</p>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="script.js"></script>
+</body>
+</html>
