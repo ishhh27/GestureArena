@@ -46,22 +46,6 @@ Control the battle using real-time hand gestures through your webcam in a cinema
 
 ---
 
-## 🚀 How to Run
-
-1. Clone the repository
-
-```bash
-git clone <your-repo-link>
-```
-
-2. Open the project folder
-
-3. Run using Live Server in VS Code
-   OR simply open `index.html`
-
-4. Allow webcam permissions
-
-5. Start battling ⚡
 
 ---
 
